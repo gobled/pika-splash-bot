@@ -38,15 +38,31 @@ export default function HomePage() {
       setIsMuted(savedMutePreference === "true");
     }
 
-    // Initialize remaining plays (default 3 on first load)
-    const savedPlays = localStorage.getItem("fruitNinjaPlaysLeft");
-    if (savedPlays === null) {
-      localStorage.setItem("fruitNinjaPlaysLeft", "3");
-      setPlaysLeft(3);
-    } else {
-      const parsed = parseInt(savedPlays, 10);
-      setPlaysLeft(Number.isNaN(parsed) ? 3 : parsed);
-    }
+    // Initialize remaining plays with daily reset logic
+    const initializePlaysLeft = () => {
+      const today = new Date().toDateString(); // Get current date as string
+      const lastResetDate = localStorage.getItem("fruitNinjaLastResetDate");
+      const savedPlays = localStorage.getItem("fruitNinjaPlaysLeft");
+
+      // Check if we need to reset (new day or first time)
+      if (lastResetDate !== today) {
+        // New day - reset plays to 3
+        localStorage.setItem("fruitNinjaPlaysLeft", "3");
+        localStorage.setItem("fruitNinjaLastResetDate", today);
+        setPlaysLeft(3);
+      } else {
+        // Same day - use saved plays
+        if (savedPlays === null) {
+          localStorage.setItem("fruitNinjaPlaysLeft", "3");
+          setPlaysLeft(3);
+        } else {
+          const parsed = parseInt(savedPlays, 10);
+          setPlaysLeft(Number.isNaN(parsed) ? 3 : parsed);
+        }
+      }
+    };
+
+    initializePlaysLeft();
   }, []);
 
   useEffect(() => {
@@ -157,7 +173,7 @@ export default function HomePage() {
   const handlePlay = () => {
     if (playsLeft <= 0) {
       if (webApp?.showAlert) {
-        webApp.showAlert("No plays left. Please come back later.");
+        webApp.showAlert("No plays left. Come back tomorrow for 3 more plays!");
       }
       return;
     }
@@ -169,6 +185,8 @@ export default function HomePage() {
     setPlaysLeft((prev) => {
       const next = Math.max(prev - 1, 0);
       localStorage.setItem("fruitNinjaPlaysLeft", String(next));
+      // Update the date to current day (in case user plays across midnight)
+      localStorage.setItem("fruitNinjaLastResetDate", new Date().toDateString());
       return next;
     });
     setIsPlaying(true);
@@ -244,6 +262,8 @@ export default function HomePage() {
       setPlaysLeft((prev) => {
         const next = prev + playsAwarded;
         localStorage.setItem("fruitNinjaPlaysLeft", String(next));
+        // Update the date to current day
+        localStorage.setItem("fruitNinjaLastResetDate", new Date().toDateString());
         return next;
       });
 
